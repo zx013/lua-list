@@ -36,6 +36,7 @@ LUAI_DDEF const lu_byte luaP_opmodes[NUM_OPCODES] = {
  ,opmode(0, 0, 0, 0, 0, iABC)		/* OP_SETTABLE */
  ,opmode(0, 0, 0, 0, 0, iABC)		/* OP_SETI */
  ,opmode(0, 0, 0, 0, 0, iABC)		/* OP_SETFIELD */
+ ,opmode(0, 0, 0, 0, 1, iABC)		/* OP_NEWLIST */
  ,opmode(0, 0, 0, 0, 1, iABC)		/* OP_NEWTABLE */
  ,opmode(0, 0, 0, 0, 1, iABC)		/* OP_SELF */
  ,opmode(0, 0, 0, 0, 1, iABC)		/* OP_ADDI */
@@ -95,6 +96,7 @@ LUAI_DDEF const lu_byte luaP_opmodes[NUM_OPCODES] = {
  ,opmode(0, 0, 0, 0, 0, iABx)		/* OP_TFORPREP */
  ,opmode(0, 0, 0, 0, 0, iABC)		/* OP_TFORCALL */
  ,opmode(0, 0, 0, 0, 1, iABx)		/* OP_TFORLOOP */
+ ,opmode(0, 0, 1, 0, 0, iABC)		/* OP_SETLISTL */
  ,opmode(0, 0, 1, 0, 0, iABC)		/* OP_SETLIST */
  ,opmode(0, 0, 0, 0, 1, iABx)		/* OP_CLOSURE */
  ,opmode(0, 1, 0, 0, 1, iABC)		/* OP_VARARG */

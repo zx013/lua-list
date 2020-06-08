@@ -128,6 +128,8 @@ typedef struct TValue {
 #define setobjt2t	setobj
 /* to new object */
 #define setobj2n	setobj
+/* to list */
+#define setobj2l	setobj
 /* to table */
 #define setobj2t	setobj
 
@@ -640,6 +642,50 @@ typedef union Closure {
 
 
 #define getproto(o)	(clLvalue(o)->p)
+
+/* }================================================================== */
+
+
+/*
+** {==================================================================
+** List
+** ===================================================================
+*/
+
+#define LUA_VLIST	makevariant(LUA_TLIST, 0)
+
+#define ttislist(o)		checktag((o), ctb(LUA_VLIST))
+
+#define lvalue(o)	check_exp(ttislist(o), gco2l(val_(o).gc))
+
+#define setlvalue(L,obj,x) \
+  { TValue *io = (obj); List *x_ = (x); \
+    val_(io).gc = obj2gco(x_); settt_(io, ctb(LUA_VLIST)); \
+    checkliveness(L,io); }
+
+#define setlvalue2s(L,o,l)	setlvalue(L,s2v(o),l)
+
+/* struct of node */
+typedef struct LNode
+{
+    TValue val;
+    struct LNode *prev;
+    struct LNode *next;
+} LNode;
+
+/* struct of list */
+typedef struct List
+{
+    CommonHeader;
+    struct LNode *head;
+    struct LNode *tail;
+    lua_Integer size;
+
+    struct LNode *fastnode;
+    lua_Integer fastindex;
+
+    GCObject *gclist;
+} List;
 
 /* }================================================================== */
 

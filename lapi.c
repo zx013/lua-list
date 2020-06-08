@@ -25,6 +25,7 @@
 #include "lobject.h"
 #include "lstate.h"
 #include "lstring.h"
+#include "llist.h"
 #include "ltable.h"
 #include "ltm.h"
 #include "lundump.h"
@@ -53,7 +54,7 @@ const char lua_ident[] =
 #define isupvalue(i)		((i) < LUA_REGISTRYINDEX)
 
 
-static TValue *index2value (lua_State *L, int idx) {
+TValue *index2value (lua_State *L, int idx) {
   CallInfo *ci = L->ci;
   if (idx > 0) {
     StkId o = ci->func + idx;
@@ -656,7 +657,7 @@ LUA_API int lua_geti (lua_State *L, int idx, lua_Integer n) {
   const TValue *slot;
   lua_lock(L);
   t = index2value(L, idx);
-  if (luaV_fastgeti(L, t, n, slot)) {
+  if (luaV_fastgetiL(L, t, n, slot)) {
     setobj2s(L, L->top, slot);
   }
   else {
@@ -838,7 +839,7 @@ LUA_API void lua_seti (lua_State *L, int idx, lua_Integer n) {
   lua_lock(L);
   api_checknelems(L, 1);
   t = index2value(L, idx);
-  if (luaV_fastgeti(L, t, n, slot)) {
+  if (luaV_fastgetiL(L, t, n, slot)) {
     luaV_finishfastset(L, t, slot, s2v(L->top - 1));
   }
   else {

@@ -1729,6 +1729,17 @@ void luaK_fixline (FuncState *fs, int line) {
 }
 
 
+void luaK_setlistsize(FuncState *fs, int pc, int ra, int asize)
+{
+    Instruction *inst = &fs->f->code[pc];
+    int extra = asize / (MAXARG_C + 1);  /* higher bits of array size */
+    int rc = asize % (MAXARG_C + 1);  /* lower bits of array size */
+    int k = (extra > 0);  /* true iff needs extra argument */
+    *inst = CREATE_ABCk(OP_NEWLIST, ra, 0, rc, k);
+    *(inst + 1) = CREATE_Ax(OP_EXTRAARG, extra);
+}
+
+
 void luaK_settablesize (FuncState *fs, int pc, int ra, int asize, int hsize) {
   Instruction *inst = &fs->f->code[pc];
   int rb = (hsize != 0) ? luaO_ceillog2(hsize) + 1 : 0;  /* hash size */
@@ -1737,6 +1748,24 @@ void luaK_settablesize (FuncState *fs, int pc, int ra, int asize, int hsize) {
   int k = (extra > 0);  /* true iff needs extra argument */
   *inst = CREATE_ABCk(OP_NEWTABLE, ra, rb, rc, k);
   *(inst + 1) = CREATE_Ax(OP_EXTRAARG, extra);
+}
+
+
+void luaK_setlistL(FuncState *fs, int base, int nelems, int tostore)
+{
+    lua_assert(tostore != 0 && tostore <= LFIELDS_PER_FLUSH);
+    if (tostore == LUA_MULTRET)
+        tostore = 0;
+    if (nelems <= MAXARG_C)
+        luaK_codeABC(fs, OP_SETLISTL, base, tostore, nelems);
+    else
+    {
+        int extra = nelems / (MAXARG_C + 1);
+        nelems %= (MAXARG_C + 1);
+        luaK_codeABCk(fs, OP_SETLISTL, base, tostore, nelems, 1);
+        codeextraarg(fs, extra);
+    }
+    fs->freereg = base + 1;  /* free registers with list values */
 }
 
 

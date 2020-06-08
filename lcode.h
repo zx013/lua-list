@@ -94,8 +94,10 @@ LUAI_FUNC void luaK_prefix (FuncState *fs, UnOpr op, expdesc *v, int line);
 LUAI_FUNC void luaK_infix (FuncState *fs, BinOpr op, expdesc *v);
 LUAI_FUNC void luaK_posfix (FuncState *fs, BinOpr op, expdesc *v1,
                             expdesc *v2, int line);
+LUAI_FUNC void luaK_setlistsize(FuncState *fs, int pc, int ra, int asize);
 LUAI_FUNC void luaK_settablesize (FuncState *fs, int pc,
                                   int ra, int asize, int hsize);
+LUAI_FUNC void luaK_setlistL(FuncState *fs, int base, int nelems, int tostore);
 LUAI_FUNC void luaK_setlist (FuncState *fs, int base, int nelems, int tostore);
 LUAI_FUNC void luaK_finish (FuncState *fs);
 LUAI_FUNC l_noret luaK_semerror (LexState *ls, const char *msg);

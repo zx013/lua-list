@@ -44,4 +44,6 @@
 
 #define codeNresults(n)		(-(n) - 3)
 
+LUAI_FUNC TValue *index2value(lua_State *L, int idx);
+
 #endif

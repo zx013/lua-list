@@ -86,7 +86,6 @@ typedef enum {
    : (slot = f(hvalue(t), k),  /* else, do raw access */  \
       !isempty(slot)))  /* result not empty? */
 
-
 /*
 ** Special case of 'luaV_fastget' for integers, inlining the fast case
 ** of 'luaH_getint'.
@@ -98,6 +97,11 @@ typedef enum {
               ? &hvalue(t)->array[k - 1] : luaH_getint(hvalue(t), k), \
       !isempty(slot)))  /* result not empty? */
 
+#define luaV_fastgetiL(L,t,k,slot) \
+  (!ttislist(t)  \
+   ? luaV_fastgeti(L,t,k,slot) \
+   : (slot = luaL_get(lvalue(t), k), \
+      !isempty(slot)))
 
 /*
 ** Finish a fast set operation (when fast get succeeds). In that case,

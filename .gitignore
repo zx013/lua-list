@@ -42,6 +42,12 @@
 *.idb
 *.pdb
 
+# VS
+.vs/
+Debug/
+Release/
+x86/
+
 # Kernel Module Compile Results
 *.mod*
 *.cmd

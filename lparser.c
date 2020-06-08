@@ -903,6 +903,67 @@ static void field (LexState *ls, ConsControl *cc) {
 }
 
 
+static void closelistfieldL(FuncState *fs, ConsControl *cc)
+{
+    if (cc->v.k == VVOID) return;  /* there is no list item */
+    luaK_exp2nextreg(fs, &cc->v);
+    cc->v.k = VVOID;
+    if (cc->tostore == LFIELDS_PER_FLUSH)
+    {
+        luaK_setlistL(fs, cc->t->u.info, cc->na, cc->tostore);  /* flush */
+        cc->na += cc->tostore;
+        cc->tostore = 0;  /* no more items pending */
+    }
+}
+
+
+static void lastlistfieldL(FuncState *fs, ConsControl *cc)
+{
+    if (cc->tostore == 0) return;
+    if (hasmultret(cc->v.k))
+    {
+        luaK_setmultret(fs, &cc->v);
+        luaK_setlistL(fs, cc->t->u.info, cc->na, LUA_MULTRET);
+        cc->na--;  /* do not count last expression (unknown number of elements) */
+    }
+    else
+    {
+        if (cc->v.k != VVOID)
+            luaK_exp2nextreg(fs, &cc->v);
+        luaK_setlistL(fs, cc->t->u.info, cc->na, cc->tostore);
+    }
+    cc->na += cc->tostore;
+}
+
+
+static void constructorL(LexState *ls, expdesc *t)
+{
+    FuncState *fs = ls->fs;
+    int line = ls->linenumber;
+    int pc = luaK_codeABC(fs, OP_NEWLIST, 0, 0, 0);
+
+    ConsControl cc;
+    luaK_code(fs, 0);  /* space for extra arg. */
+    cc.na = cc.tostore = 0;
+    cc.t = t;
+    init_exp(t, VNONRELOC, fs->freereg);  /* table will be at stack top */
+    luaK_reserveregs(fs, 1);
+    init_exp(&cc.v, VVOID, 0);  /* no value (yet) */
+    checknext(ls, '[');
+
+    do
+    {
+        lua_assert(cc.v.k == VVOID || cc.tostore > 0);
+        if (ls->t.token == ']') break;
+        closelistfieldL(fs, &cc);
+        listfield(ls, &cc);
+    } while (testnext(ls, ',') || testnext(ls, ';'));
+    check_match(ls, ']', '[', line);
+    lastlistfieldL(fs, &cc);
+    luaK_setlistsize(fs, pc, t->u.info, cc.na);
+}
+
+
 static void constructor (LexState *ls, expdesc *t) {
   /* constructor -> '{' [ field { sep field } [sep] ] '}'
      sep -> ',' | ';' */
@@ -1154,6 +1215,10 @@ static void simpleexp (LexState *ls, expdesc *v) {
                       "cannot use '...' outside a vararg function");
       init_exp(v, VVARARG, luaK_codeABC(fs, OP_VARARG, 0, 0, 1));
       break;
+    }
+    case '[': {  /* constructor */
+      constructorL(ls, v);
+      return;
     }
     case '{': {  /* constructor */
       constructor(ls, v);
