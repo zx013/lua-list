@@ -1352,7 +1352,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
           Protect(luaV_finishset(L, s2v(ra), rb, rc, slot));
         vmbreak;
       }
-            vmcase(OP_NEWLIST) {
+      vmcase(OP_NEWLIST) {
           int c = GETARG_C(i);
           List *l;
           lua_assert((!TESTARG_k(i)) == (GETARG_Ax(*pc) == 0));
@@ -1815,8 +1815,15 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
               n = cast_int(L->top - ra) - 1;  /* get up to the top */
           else
               L->top = ci->top;  /* correct top in case of emergency GC */
+          last += n;
           if (TESTARG_k(i))
+          {
+              last += GETARG_Ax(*pc) * (MAXARG_C + 1);
               pc++;
+          }
+
+          if (last > l->size)  /* needs more space? */
+              luaL_resize(L, l, last);
 
           LNode *ln = l->head;
           int i;
