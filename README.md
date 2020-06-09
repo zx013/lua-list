@@ -79,3 +79,7 @@ list: 000001F666CECA80
 
 - ##### list.unpack(list)
 返回list中的所有元素。
+
+## 其他库函数
+- ##### locals()
+获取局部变量，将其保存到table中。
