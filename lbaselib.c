@@ -481,6 +481,34 @@ static int luaB_tostring (lua_State *L) {
 }
 
 
+/*
+function locals()
+    local vars = {}
+    local idx = 1
+    while true do
+        local ln, lv = debug.getlocal(2, idx)
+        if ln == nil then break end
+        vars[ln] = lv
+        idx = idx + 1
+    end
+    return vars
+end
+*/
+static int luaB_locals(lua_State *L) {
+    lua_Debug ar;
+    const char *name;
+    int nvar = 1;  /* local-variable index */
+    if (!lua_getstack(L, 1, &ar))  /* out of range? */
+        return luaL_argerror(L, 1, "level out of range");
+
+    lua_newtable(L);
+    while (name = lua_getlocal(L, &ar, nvar++))
+        lua_setfield(L, -2, name);
+
+    return 1;
+}
+
+
 static const luaL_Reg base_funcs[] = {
   {"assert", luaB_assert},
   {"collectgarbage", luaB_collectgarbage},
@@ -505,6 +533,7 @@ static const luaL_Reg base_funcs[] = {
   {"tostring", luaB_tostring},
   {"type", luaB_type},
   {"xpcall", luaB_xpcall},
+  {"locals", luaB_locals},
   /* placeholders */
   {LUA_GNAME, NULL},
   {"_VERSION", NULL},
