@@ -881,6 +881,45 @@ static void listfield (LexState *ls, ConsControl *cc) {
 }
 
 
+static void constructorL(LexState *ls, expdesc *t, ConsControl *cons, expdesc *key, int many, int match);
+
+static void reslistfield(LexState *ls, ConsControl *cc) {
+    FuncState *fs = ls->fs;
+    int reg = ls->fs->freereg;
+    expdesc tab, key, val;
+    expdesc *t = &cc->v;
+    luaX_next(ls);
+    if (ls->t.token == ']') //empty list
+        constructorL(ls, &cc->v, cc, NULL, 0, 1);
+    else
+    {
+        expr(ls, &key);
+        char c = ls->t.token;
+        luaX_next(ls);
+        if (c == ']') //list or recfield
+        {
+            if (ls->t.token == '=') //recfield
+            {
+                luaX_next(ls);
+
+                luaK_exp2val(ls->fs, &key);
+                cc->nh++;
+                tab = *cc->t;
+                luaK_indexed(fs, &tab, &key);
+                expr(ls, &val);
+                luaK_storevar(fs, &tab, &val);
+                fs->freereg = reg;  /* free registers */
+            }
+            else //list
+                constructorL(ls, &cc->v, cc, &key, 0, 0);
+        }
+        else if (c == ',' || c == ';') //list
+            constructorL(ls, &cc->v, cc, &key, 1, 1);
+        else
+            error_expected(ls, ls->t.token);
+    }
+}
+
 static void field (LexState *ls, ConsControl *cc) {
   /* field -> listfield | recfield */
   switch(ls->t.token) {
@@ -892,7 +931,7 @@ static void field (LexState *ls, ConsControl *cc) {
       break;
     }
     case '[': {
-      recfield(ls, cc);
+      reslistfield(ls, cc);
       break;
     }
     default: {
@@ -936,31 +975,46 @@ static void lastlistfieldL(FuncState *fs, ConsControl *cc)
 }
 
 
-static void constructorL(LexState *ls, expdesc *t)
+static void constructorL(LexState *ls, expdesc *t, ConsControl *cons, expdesc *key, int many, int match)
 {
     FuncState *fs = ls->fs;
     int line = ls->linenumber;
     int pc = luaK_codeABC(fs, OP_NEWLIST, 0, 0, 0);
 
     ConsControl cc;
-    luaK_code(fs, 0);  /* space for extra arg. */
+    luaK_code(fs, 0);
     cc.na = cc.tostore = 0;
     cc.t = t;
-    init_exp(t, VNONRELOC, fs->freereg);  /* table will be at stack top */
+    init_exp(t, VNONRELOC, fs->freereg);
     luaK_reserveregs(fs, 1);
-    init_exp(&cc.v, VVOID, 0);  /* no value (yet) */
-    checknext(ls, '[');
+    init_exp(&cc.v, VVOID, 0);
 
-    do
+    if (!cons)
+        checknext(ls, '[');
+    if (key)
     {
-        lua_assert(cc.v.k == VVOID || cc.tostore > 0);
-        if (ls->t.token == ']') break;
         closelistfieldL(fs, &cc);
-        listfield(ls, &cc);
-    } while (testnext(ls, ',') || testnext(ls, ';'));
-    check_match(ls, ']', '[', line);
+        cc.v = *key;
+        cc.tostore++;
+    }
+    if (many)
+    {
+        do
+        {
+            lua_assert(cc.v.k == VVOID || cc.tostore > 0);
+            if (ls->t.token == ']') break;
+            closelistfieldL(fs, &cc);
+            listfield(ls, &cc);
+        } while (testnext(ls, ',') || testnext(ls, ';'));
+    }
+    if (match)
+        check_match(ls, ']', '[', line);
+
     lastlistfieldL(fs, &cc);
     luaK_setlistsize(fs, pc, t->u.info, cc.na);
+
+    if (cons)
+        cons->tostore++;
 }
 
 
@@ -1216,8 +1270,8 @@ static void simpleexp (LexState *ls, expdesc *v) {
       init_exp(v, VVARARG, luaK_codeABC(fs, OP_VARARG, 0, 0, 1));
       break;
     }
-    case '[': {  /* constructor */
-      constructorL(ls, v);
+    case '[': {  /* constructor list */
+      constructorL(ls, v, NULL, NULL, 1, 1);
       return;
     }
     case '{': {  /* constructor */
