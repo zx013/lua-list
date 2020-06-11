@@ -112,3 +112,25 @@ list: 000001F666CECA80
 ## 其他库函数
 - ##### locals()
 获取局部变量，将其保存到table中。
+
+- ##### generate(func)
+将函数转换为生成器，生成器中可以使用yield中断并返回值。
+
+```lua
+> f = generate(function (a)
+>>     for i = 1, a do
+>>         yield(i, i * 2)
+>>     end
+>> end)
+> for i, j in f(5) do
+>>     print(i, j)
+>> end
+1       2
+2       4
+3       6
+4       8
+5       10
+```
+
+- ##### yield(...)
+应用于生成器中，中断并返回若干个值。

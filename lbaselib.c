@@ -494,7 +494,7 @@ function locals()
     return vars
 end
 */
-static int luaB_locals(lua_State *L) {
+static int luaB_locals (lua_State *L) {
     lua_Debug ar;
     const char *name;
     int nvar = 1;  /* local-variable index */
@@ -506,6 +506,123 @@ static int luaB_locals(lua_State *L) {
         lua_setfield(L, -2, name);
 
     return 1;
+}
+
+
+static int luaB_cocreate (lua_State *L) {
+    lua_State *NL;
+    luaL_checktype(L, 1, LUA_TFUNCTION);
+    NL = lua_newthread(L);
+    lua_pushvalue(L, 1);  /* move function to top */
+    lua_xmove(L, NL, 1);  /* move function from L to NL */
+    return 1;
+}
+
+
+static int auxresume (lua_State *L, lua_State *co, int narg) {
+    int status, nres;
+    if (!lua_checkstack(co, narg)) {
+        lua_pushliteral(L, "too many arguments to resume");
+        return -1;  /* error flag */
+    }
+    lua_xmove(L, co, narg);
+    status = lua_resume(co, L, narg, &nres);
+    if (status == LUA_OK || status == LUA_YIELD) {
+        if (!lua_checkstack(L, nres + 1)) {
+            lua_pop(co, nres);  /* remove results anyway */
+            lua_pushliteral(L, "too many results to resume");
+            return -1;  /* error flag */
+        }
+        lua_xmove(co, L, nres);  /* move yielded values */
+        return nres;
+    }
+    else {
+        lua_xmove(co, L, 1);  /* move error message */
+        return -1;  /* error flag */
+    }
+}
+
+
+static int luaB_auxwrap (lua_State *L) {
+    lua_State *co = lua_tothread(L, lua_upvalueindex(1));
+    int r = auxresume(L, co, lua_gettop(L));
+    if (r < 0) {
+        int stat = lua_status(co);
+        if (stat != LUA_OK && stat != LUA_YIELD)
+            lua_resetthread(co);  /* close variables in case of errors */
+        if (lua_type(L, -1) == LUA_TSTRING) {  /* error object is a string? */
+            luaL_where(L, 1);  /* add extra info, if available */
+            lua_insert(L, -2);
+            lua_concat(L, 2);
+        }
+        return lua_error(L);  /* propagate error */
+    }
+    return r;
+}
+
+
+static int generate_retf (lua_State *L) {
+    int hidx = lua_upvalueindex(1);
+    int n = (int)luaL_checkinteger(L, lua_upvalueindex(2));
+    int i;
+
+    lua_pop(L, lua_gettop(L)); //在for循环中会有两个nil的参数
+
+    lua_pushvalue(L, lua_upvalueindex(3));
+
+    if (n > 0) { //只在第一次运行时使用参数
+        lua_pushinteger(L, 0);
+        lua_replace(L, lua_upvalueindex(2));
+        for (i = 1; i <= n; i++)
+            lua_geti(L, hidx, i);
+    }
+
+    lua_call(L, n, -1);
+    return lua_gettop(L);
+}
+
+
+static int generate_func (lua_State *L) {
+    int n = lua_gettop(L);  /* number of elements to pack */
+    int i;
+
+    lua_createtable(L, n, 1);  /* create result table */
+    lua_insert(L, 1);  /* put it at index 1 */
+    for (i = n; i >= 1; i--)  /* assign elements */
+        lua_seti(L, 1, i);
+
+    lua_pushinteger(L, n);
+
+    lua_pushvalue(L, lua_upvalueindex(1));
+    lua_insert(L, 1);
+    luaB_cocreate(L);
+    lua_pushcclosure(L, luaB_auxwrap, 1);
+    
+    lua_pushcclosure(L, generate_retf, 3);
+
+    return 1;
+}
+
+
+/*
+function generate(func)
+    return function(...)
+        local args = {...}
+        local bfunc = coroutine.wrap(func)
+        return function()
+            return bfunc(table.unpack(args))
+        end
+    end
+end
+*/
+static int luaB_generate (lua_State *L) {
+    lua_pushcclosure(L, generate_func, 1);
+    return 1;
+}
+
+
+static int luaB_yield (lua_State *L) {
+    return lua_yield(L, lua_gettop(L));
 }
 
 
@@ -534,6 +651,8 @@ static const luaL_Reg base_funcs[] = {
   {"type", luaB_type},
   {"xpcall", luaB_xpcall},
   {"locals", luaB_locals},
+  {"generate", luaB_generate},
+  {"yield", luaB_yield},
   /* placeholders */
   {LUA_GNAME, NULL},
   {"_VERSION", NULL},
