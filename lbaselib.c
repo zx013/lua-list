@@ -642,10 +642,10 @@ static int iter_string (lua_State *L) {
     lua_replace(L, lua_upvalueindex(2));
     
     const char *s = luaL_checkstring(L, lua_upvalueindex(1));
-    if (s[index])
-        lua_pushlstring(L, s + index, 1);
-    else
+    if (!s[index])
         lua_pushnil(L);
+    else
+        lua_pushlstring(L, s + index, 1);
     return 1;
 }
 
@@ -800,6 +800,89 @@ static int luaB_enumerate (lua_State *L) {
 }
 
 
+static int zip_iter (lua_State *L) {
+    int hidx = lua_upvalueindex(1);
+    int n = (int)luaL_checkinteger(L, lua_upvalueindex(2));
+    int i;
+
+    lua_Integer index = luaL_checkinteger(L, lua_upvalueindex(3));
+    lua_pushinteger(L, index + 1);
+    lua_replace(L, lua_upvalueindex(3));
+
+    lua_pop(L, lua_gettop(L)); //在for循环中会有两个nil的参数
+
+    for (i = 1; i <= n; i++)
+        lua_geti(L, hidx, i);
+
+    for (i = 1; i <= n; i++)
+    {
+        switch (lua_type(L, i))
+        {
+        case LUA_TLIST: case LUA_TTABLE: {
+            lua_geti(L, i, index);
+            if (lua_isnil(L, i)) {
+                lua_pushnil(L);
+                return 1;
+            }
+            break;
+        }
+        case LUA_TSTRING: {
+            const char *s = luaL_checkstring(L, i);
+            if (!s[index - 1]) {
+                lua_pushnil(L);
+                return 1;
+            }
+            lua_pushlstring(L, s + index - 1, 1);
+            break;
+        }
+        case LUA_TFUNCTION: {
+            int t = lua_gettop(L);
+            lua_pushvalue(L, i);
+            lua_call(L, 0, -1);
+            if (!(lua_gettop(L) - t) || lua_isnil(L, t + 1)) {
+                lua_pushnil(L);
+                return 1;
+            }
+            break;
+        }
+        }
+    }
+    return lua_gettop(L) - n;
+}
+
+
+/*
+function zip(...)
+    local gargs = {}
+    for i, v in ipairs({...}) do
+        gargs[i] = iter(v)
+    end
+    return function()
+        local r = {}
+        for i, v in ipairs(gargs) do
+            r[i] = v()
+            if r[i] == nil then return nil end
+        end
+        return table.unpack(r)
+    end
+end
+*/
+static int luaB_zip (lua_State *L) {
+    int n = lua_gettop(L);  /* number of elements to pack */
+    int i;
+
+    lua_createtable(L, n, 1);  /* create result table */
+    lua_insert(L, 1);  /* put it at index 1 */
+    for (i = n; i >= 1; i--)  /* assign elements */
+        lua_seti(L, 1, i);
+
+    lua_pushinteger(L, n);
+    lua_pushinteger(L, 1);
+    lua_pushcclosure(L, zip_iter, 3);
+    return 1;
+}
+
+
 static const luaL_Reg base_funcs[] = {
   {"assert", luaB_assert},
   {"collectgarbage", luaB_collectgarbage},
@@ -829,6 +912,7 @@ static const luaL_Reg base_funcs[] = {
   {"yield", luaB_yield},
   {"iter", luaB_iter},
   {"enumerate", luaB_enumerate},
+  {"zip", luaB_zip},
   /* placeholders */
   {LUA_GNAME, NULL},
   {"_VERSION", NULL},

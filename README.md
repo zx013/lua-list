@@ -154,7 +154,7 @@ b
 c
 ```
 
-- ##### enumerate(func)
+- ##### enumerate(it)
 将可迭代对象转换成带顺序索引的迭代器，索引计数从1开始。
 
 ```lua
@@ -173,4 +173,21 @@ c
 1       a
 2       b
 3       c
+```
+
+- ##### zip(it1, it2, ...)
+将若干个可迭代对象对应位置的元素依次打包。
+
+```lua
+> a = {1, 2, 3}
+> b = [4, 5, 6]
+> c = "abc"
+> d = iter("def")
+>
+> for i, j, k, l in zip(a, b, c, d) do
+>>     print(i, j, k, l)
+>> end
+1       4       a       d
+2       5       b       e
+3       6       c       f
 ```
