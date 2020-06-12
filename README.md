@@ -122,6 +122,7 @@ list: 000001F666CECA80
 >>         yield(i, i * 2)
 >>     end
 >> end)
+>
 > for i, j in f(5) do
 >>     print(i, j)
 >> end
@@ -132,5 +133,44 @@ list: 000001F666CECA80
 5       10
 ```
 
-- ##### yield(...)
-应用于生成器中，中断并返回若干个值。
+- ##### iter(it)
+将可迭代对象转换成迭代器，可以是table, list, string或者其他迭代器。
+
+```lua
+> for i in iter([1, 2, 3]) do
+>>      print(i)
+>> end
+1
+2
+3
+```
+
+```lua
+> for i in iter("abc") do
+>>      print(i)
+>> end
+a
+b
+c
+```
+
+- ##### enumerate(func)
+将可迭代对象转换成带顺序索引的迭代器，索引计数从1开始。
+
+```lua
+> for i, v in enumerate([1, 2, 3]) do
+>>      print(i, v)
+>> end
+1       1
+2       2
+3       3
+```
+
+```lua
+> for i, v in enumerate("abc") do
+>>      print(i, v)
+>> end
+1       a
+2       b
+3       c
+```

@@ -626,6 +626,180 @@ static int luaB_yield (lua_State *L) {
 }
 
 
+static int iter_table (lua_State *L) {
+    lua_Integer index = luaL_checkinteger(L, lua_upvalueindex(2));
+    lua_pushinteger(L, index + 1);
+    lua_replace(L, lua_upvalueindex(2));
+
+    lua_geti(L, lua_upvalueindex(1), index);
+    return 1;
+}
+
+
+static int iter_string (lua_State *L) {
+    lua_Integer index = luaL_checkinteger(L, lua_upvalueindex(2));
+    lua_pushinteger(L, index + 1);
+    lua_replace(L, lua_upvalueindex(2));
+    
+    const char *s = luaL_checkstring(L, lua_upvalueindex(1));
+    if (s[index])
+        lua_pushlstring(L, s + index, 1);
+    else
+        lua_pushnil(L);
+    return 1;
+}
+
+
+static int iter_iter (lua_State *L) {
+    lua_pop(L, lua_gettop(L));
+    lua_pushvalue(L, lua_upvalueindex(1));
+
+    lua_call(L, 0, -1);
+    return lua_gettop(L);
+}
+
+
+/*
+iter = generate(function(data)
+    local index = 1
+    local val
+    if type(data) == "function" then
+        while true do
+            val = data()
+            if val == nil then return nil end
+            yield(val)
+            index = index + 1
+        end
+    elseif type(data) == "table" then
+        while true do
+            val = data[index]
+            if val == nil then return nil end
+            yield(val)
+            index = index + 1
+        end
+    elseif type(data) == "string" then
+        while true do
+            val = string.sub(data, index, index)
+            if val == "" then return nil end
+            yield(val)
+            index = index + 1
+        end
+    end
+end)
+*/
+static int luaB_iter (lua_State *L) {
+    lua_pop(L, lua_gettop(L) - 1); //只保留第一个参数，如io.lines("xxx")的栈大小为4
+    switch (lua_type(L, 1))
+    {
+    case LUA_TLIST: case LUA_TTABLE:
+        lua_pushinteger(L, 1);
+        lua_pushcclosure(L, iter_table, 2);
+        break;
+    case LUA_TSTRING:
+        lua_pushinteger(L, 0);
+        lua_pushcclosure(L, iter_string, 2);
+        break;
+    case LUA_TFUNCTION:
+        lua_pushcclosure(L, iter_iter, 1);
+        break;
+    }
+
+    return 1;
+}
+
+
+static int enumerate_table (lua_State *L) {
+    lua_Integer index = luaL_checkinteger(L, lua_upvalueindex(2));
+    lua_pushinteger(L, index + 1);
+    lua_replace(L, lua_upvalueindex(2));
+
+    lua_len(L, lua_upvalueindex(1));
+    lua_Integer n = luaL_checkinteger(L, -1);
+    if (index > n)
+    {
+        lua_pushnil(L);
+        return 1;
+    }
+    lua_pushinteger(L, index);
+    lua_geti(L, lua_upvalueindex(1), index);
+    return 2;
+}
+
+
+static int enumerate_string (lua_State *L) {
+    lua_Integer index = luaL_checkinteger(L, lua_upvalueindex(2));
+    lua_pushinteger(L, index + 1);
+    lua_replace(L, lua_upvalueindex(2));
+
+    const char *s = luaL_checkstring(L, lua_upvalueindex(1));
+    if (!s[index])
+    {
+        lua_pushnil(L);
+        return 1;
+    }
+
+    lua_pushinteger(L, index + 1);
+    lua_pushlstring(L, s + index, 1);    
+    return 2;
+}
+
+
+static int enumerate_iter (lua_State *L) {
+    lua_pop(L, lua_gettop(L));
+    lua_Integer index = luaL_checkinteger(L, lua_upvalueindex(2));
+    lua_pushinteger(L, index + 1);
+    lua_replace(L, lua_upvalueindex(2));
+
+    lua_pushvalue(L, lua_upvalueindex(1));
+
+    lua_call(L, 0, -1);
+
+    if (!lua_gettop(L) || lua_isnil(L, 1))
+    {
+        lua_pushnil(L);
+        return 1;
+    }
+    lua_pushinteger(L, index);
+    lua_insert(L, 1);
+    return lua_gettop(L);
+}
+
+
+/*
+enumerate = generate(function(data)
+    local index = 1
+    local it = iter(data)
+    local val
+    while true do
+        val = it()
+        if val == nil then return nil end
+        yield(index, val)
+        index = index + 1
+    end
+end)
+*/
+static int luaB_enumerate (lua_State *L) {
+    lua_pop(L, lua_gettop(L) - 1);
+    switch (lua_type(L, 1))
+    {
+    case LUA_TLIST: case LUA_TTABLE:
+        lua_pushinteger(L, 1);
+        lua_pushcclosure(L, enumerate_table, 2);
+        break;
+    case LUA_TSTRING:
+        lua_pushinteger(L, 0);
+        lua_pushcclosure(L, enumerate_string, 2);
+        break;
+    case LUA_TFUNCTION:
+        lua_pushinteger(L, 1);
+        lua_pushcclosure(L, enumerate_iter, 2);
+        break;
+    }
+
+    return 1;
+}
+
+
 static const luaL_Reg base_funcs[] = {
   {"assert", luaB_assert},
   {"collectgarbage", luaB_collectgarbage},
@@ -653,6 +827,8 @@ static const luaL_Reg base_funcs[] = {
   {"locals", luaB_locals},
   {"generate", luaB_generate},
   {"yield", luaB_yield},
+  {"iter", luaB_iter},
+  {"enumerate", luaB_enumerate},
   /* placeholders */
   {LUA_GNAME, NULL},
   {"_VERSION", NULL},
