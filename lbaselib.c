@@ -956,6 +956,8 @@ function map(func, ...)
 end
 */
 static int luaB_map (lua_State *L) {
+    luaL_checktype(L, 1, LUA_TFUNCTION);
+
     int n = lua_gettop(L) - 1;  /* number of elements to pack */
     int i;
 
@@ -967,6 +969,103 @@ static int luaB_map (lua_State *L) {
     lua_pushinteger(L, n);
     lua_pushinteger(L, 1);
     lua_pushcclosure(L, map_func, 4);
+    return 1;
+}
+
+
+/*
+function reduce(func, data, init)
+    local s = init
+    local e
+    for v in iter(data) do
+        e = v
+        if s == nil then
+            s = e
+        else
+            s = func(s, e)
+        end
+    end
+    return s
+end
+*/
+static int luaB_reduce (lua_State *L) {
+    luaL_checktype(L, 1, LUA_TFUNCTION);
+
+    int n = lua_gettop(L);  /* number of elements to pack */
+    int i = 1;
+
+    switch (lua_type(L, 2))
+    {
+    case LUA_TLIST: case LUA_TTABLE: {
+        if (n >= 3)
+            lua_pushvalue(L, 3);
+        else {
+            lua_geti(L, 2, i++);
+            if (lua_isnil(L, -1))
+                return 1;
+        }
+        while (1) {
+            lua_geti(L, 2, i++);
+            if (lua_isnil(L, -1)) {
+                lua_pop(L, 1);
+                return 1;
+            }
+
+            lua_pushvalue(L, 1);
+            lua_insert(L, -3);
+            lua_call(L, 2, 1);
+        }
+        break;
+    }
+    case LUA_TSTRING: {
+        i--;
+        const char *s = luaL_checkstring(L, 2);
+        if (n >= 3)
+            lua_pushvalue(L, 3);
+        else {
+            if (!s[i])
+                return 1;
+            lua_pushlstring(L, s + i++, 1);
+        }
+        
+        while (1) {
+            if (!s[i])
+                return 1;
+            lua_pushlstring(L, s + i++, 1);
+
+            lua_pushvalue(L, 1);
+            lua_insert(L, -3);
+            lua_call(L, 2, 1);
+        }
+        break;
+    }
+    case LUA_TFUNCTION: {
+        if (n >= 3)
+            lua_pushvalue(L, 3);
+        else {
+            lua_pushvalue(L, 2);
+            lua_call(L, 0, 1);
+            if (lua_isnil(L, -1))
+                return 1;
+        }
+        while (1) {
+            lua_pushvalue(L, 2);
+            lua_call(L, 0, 1);
+            if (lua_isnil(L, -1)) {
+                lua_pop(L, 1);
+                return 1;
+            }
+
+            lua_pushvalue(L, 1);
+            lua_insert(L, -3);
+            lua_call(L, 2, 1);
+        }
+        break;
+    }
+    default:
+        lua_pushvalue(L, 2);
+    }
+
     return 1;
 }
 
@@ -1002,6 +1101,7 @@ static const luaL_Reg base_funcs[] = {
   {"enumerate", luaB_enumerate},
   {"zip", luaB_zip},
   {"map", luaB_map},
+  {"reduce", luaB_reduce},
   /* placeholders */
   {LUA_GNAME, NULL},
   {"_VERSION", NULL},

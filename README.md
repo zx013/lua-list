@@ -214,3 +214,23 @@ c
 2       5       13      14
 3       6       15      16
 ```
+
+- ##### reduce(func, it[, init])
+使用func函数对可迭代对象it进行累积。
+
+
+```lua
+> f = function(x, y)
+>>     return x + y
+>> end
+>
+> g = function(x, y)
+>>     return x .. "'" .. y
+>> end
+> m = map(f, {1, 3, 5, 7, 9}, {2, 4, 6, 8, 10})
+>
+> reduce(f, m)
+55
+> reduce(g, "abcd")
+a'b'c'd
+```
