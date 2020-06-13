@@ -191,3 +191,26 @@ c
 2       5       b       e
 3       6       c       f
 ```
+
+- ##### map(func, it1, ...)
+根据func对后续可迭代对象进行映射。
+
+```lua
+> a = {1, 2, 3}
+> b = [4, 5, 6]
+> c = "abc"
+> d = iter("def")
+> e = generate(function ()
+>>     yield(11, 12)
+>>     yield(13, 14)
+>>     yield(15, 16)
+>> end)
+> f = function (x1, x2, x3, x4) return x1, x2, x3, x4 end
+>
+> for i, j, k, l in map(f, a, b, e()) do
+>>     print(i, j, k, l)
+>> end
+1       4       11      12
+2       5       13      14
+3       6       15      16
+```
