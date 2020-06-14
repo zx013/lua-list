@@ -23,6 +23,7 @@
 #include "lobject.h"
 #include "lstate.h"
 #include "lstring.h"
+#include "llist.h"
 #include "ltable.h"
 #include "ltm.h"
 
@@ -119,6 +120,7 @@ static void entersweep (lua_State *L);
 
 static GCObject **getgclist (GCObject *o) {
   switch (o->tt) {
+    case LUA_VLIST: return &gco2l(o)->gclist;
     case LUA_VTABLE: return &gco2t(o)->gclist;
     case LUA_VLCL: return &gco2lcl(o)->gclist;
     case LUA_VCCL: return &gco2ccl(o)->gclist;
@@ -289,7 +291,7 @@ static void reallymarkobject (global_State *g, GCObject *o) {
       }
       /* else... */
     }  /* FALLTHROUGH */
-    case LUA_VLCL: case LUA_VCCL: case LUA_VTABLE:
+    case LUA_VLCL: case LUA_VCCL: case LUA_VLIST: case LUA_VTABLE:
     case LUA_VTHREAD: case LUA_VPROTO: {
       linkobjgclist(o, g->gray);
       break;
@@ -373,6 +375,23 @@ static void restartcollection (global_State *g) {
 ** Traverse functions
 ** =======================================================
 */
+
+/*
+** Traverse a list.
+*/
+static lu_mem traverselist (global_State *g, List *l) {
+    LNode *ln;
+    lua_Integer i;
+    lua_Integer asize = l->size;
+
+    //for (i = 0, ln = l->head; i < asize; i++, ln = ln->next)
+    //    markvalue(g, &ln->val);
+    //if (g->gckind == KGC_GEN) {
+    //    linkgclist(l, g->grayagain);
+    //    black2gray(l);
+    //}
+    return 1 + asize;
+}
 
 /*
 ** Traverse a table with weak values and link it to proper list. During
@@ -598,6 +617,7 @@ static lu_mem propagatemark (global_State *g) {
   gray2black(o);
   g->gray = *getgclist(o);  /* remove from 'gray' list */
   switch (o->tt) {
+    case LUA_VLIST: return traverselist(g, gco2l(o));
     case LUA_VTABLE: return traversetable(g, gco2t(o));
     case LUA_VUSERDATA: return traverseudata(g, gco2u(o));
     case LUA_VLCL: return traverseLclosure(g, gco2lcl(o));
@@ -721,6 +741,9 @@ static void freeobj (lua_State *L, GCObject *o) {
       break;
     case LUA_VCCL:
       luaM_freemem(L, o, sizeCclosure(gco2ccl(o)->nupvalues));
+      break;
+    case LUA_VLIST:
+      luaL_free(L, gco2l(o));
       break;
     case LUA_VTABLE:
       luaH_free(L, gco2t(o));
