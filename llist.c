@@ -4,7 +4,7 @@
 #include "llist.h"
 
 
-static const TValue absentkey = { ABSTKEYCONSTANT };
+static TValue absentkey = { ABSTKEYCONSTANT };
 
 List *luaL_new (lua_State *L)
 {
