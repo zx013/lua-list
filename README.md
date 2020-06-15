@@ -218,7 +218,6 @@ c
 - ##### reduce(func, it[, init])
 使用func函数对可迭代对象it进行累积。
 
-
 ```lua
 > f = function(x, y)
 >>     return x + y
@@ -233,4 +232,27 @@ c
 55
 > reduce(g, "abcd")
 a'b'c'd
+```
+
+- ##### filter(func, it)
+使用func函数过滤可迭代对象，过滤条件为func函数返回nil, false或无返回值。
+
+```lua
+> for i in filter(function (x) return x > 3 end, {1, 2, 3, 4, 5}) do
+>>     print(i)
+>> end
+4
+5
+```
+
+- ##### string.split(str, delim=" ", num=-1)
+使用delim分割字符串，num表示分割次数，-1为无限次。
+
+```lua
+> for k in iter(string.split("abcdefde", "d")) do
+>>     print(k)
+>> end
+abc
+ef
+e
 ```

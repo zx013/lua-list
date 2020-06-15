@@ -1755,6 +1755,54 @@ static int str_unpack (lua_State *L) {
   return n + 1;
 }
 
+
+/*
+function string.split(s, p)
+    local rt = {}
+    string.gsub(s, '[^'..p..']+', function(w) table.insert(rt, w) end)
+    return rt
+end
+*/
+static int str_split (lua_State *L) {
+    char *s, *r;
+    const char *delim = " ";
+    size_t dlen = 1;
+    lua_Integer num = -1;
+    int key = 1;
+
+    switch (lua_gettop(L))
+    {
+    case 3:
+        num = luaL_checkinteger(L, 3);
+    case 2:
+        delim = luaL_checkstring(L, 2);
+        dlen = strlen(delim);
+        if (dlen == 0)
+            return luaL_error(L, "empty separator");
+    case 1:
+        s = (char *)luaL_checkstring(L, 1);
+        lua_pop(L, lua_gettop(L));
+
+        lua_newtable(L);  /* create result table */
+        lua_insert(L, 1);  /* put it at index 1 */
+        for (; num; num--) {
+            r = strstr(s, delim);
+            if (!r || !*r)
+                break;
+            lua_pushlstring(L, s, r - s);
+            lua_seti(L, 1, key++);
+            s = r + dlen;
+        }
+        lua_pushstring(L, s);
+        lua_seti(L, 1, key);
+        break;
+    default:
+        return luaL_error(L, "wrong number of arguments to 'split'");
+    }
+
+    return 1;
+}
+
 /* }====================================================== */
 
 
@@ -1776,6 +1824,7 @@ static const luaL_Reg strlib[] = {
   {"pack", str_pack},
   {"packsize", str_packsize},
   {"unpack", str_unpack},
+  {"split", str_split},
   {NULL, NULL}
 };
 
