@@ -1070,6 +1070,69 @@ static int luaB_reduce (lua_State *L) {
 }
 
 
+static int filter_func (lua_State *L) {
+    lua_pop(L, lua_gettop(L)); //在for循环中会有两个nil的参数
+
+    lua_Integer index = luaL_checkinteger(L, lua_upvalueindex(3));
+    lua_pushvalue(L, lua_upvalueindex(2));
+
+    while (1) {
+        switch (lua_type(L, 1))
+        {
+        case LUA_TLIST: case LUA_TTABLE: {
+            lua_geti(L, 1, index);
+            if (lua_isnil(L, -1)) {
+                lua_pushnil(L);
+                return 1;
+            }
+            break;
+        }
+        case LUA_TSTRING: {
+            const char *s = luaL_checkstring(L, 1);
+            if (!s[index - 1]) {
+                lua_pushnil(L);
+                return 1;
+            }
+            lua_pushlstring(L, s + index - 1, 1);
+            break;
+        }
+        case LUA_TFUNCTION: {
+            lua_pushvalue(L, 1);
+            lua_call(L, 0, 1);
+            if (lua_gettop(L) != 2 || lua_isnil(L, -1)) {
+                lua_pushnil(L);
+                return 1;
+            }
+            break;
+        }
+        }
+
+        index++;
+        lua_pushvalue(L, lua_upvalueindex(1));
+        lua_pushvalue(L, -2);  /* copy data */
+
+        lua_call(L, 1, 1);
+        if (lua_toboolean(L, -1))
+            break;
+        lua_pop(L, 2);
+    }
+    lua_pop(L, 1);  /* pop result */
+
+    lua_pushinteger(L, index);
+    lua_replace(L, lua_upvalueindex(3));
+
+    return 1;
+}
+
+
+static int luaB_filter (lua_State *L) {
+    luaL_checktype(L, 1, LUA_TFUNCTION);
+    lua_pushinteger(L, 1);
+    lua_pushcclosure(L, filter_func, 3);
+    return 1;
+}
+
+
 static const luaL_Reg base_funcs[] = {
   {"assert", luaB_assert},
   {"collectgarbage", luaB_collectgarbage},
@@ -1102,6 +1165,7 @@ static const luaL_Reg base_funcs[] = {
   {"zip", luaB_zip},
   {"map", luaB_map},
   {"reduce", luaB_reduce},
+  {"filter", luaB_filter},
   /* placeholders */
   {LUA_GNAME, NULL},
   {"_VERSION", NULL},
