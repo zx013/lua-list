@@ -245,7 +245,7 @@ a'b'c'd
 5
 ```
 
-- ##### string.split(str, delim=" ", num=-1)
+- ##### string.split(str[, delim=" "[, num=-1]])
 使用delim分割字符串，num表示分割次数，-1为无限次。
 
 ```lua
@@ -255,4 +255,25 @@ a'b'c'd
 abc
 ef
 e
+```
+
+- ##### string.lstrip(str[, c])
+- ##### string.rstrip(str[, c])
+- ##### string.strip(str[, c])
+lstrip: 去除开头的指定字符。
+
+rstrip: 去除结尾的指定字符。
+
+strip: 去除开头和结尾的指定字符。
+
+c为字符串，表示该字符串中的所有字符都需要去除。
+
+```lua
+> s = "aaabacdefaba"
+> print(string.lstrip(s, "ab"))
+cdefaba
+> print(string.rstrip(s, "ab"))
+aaabacdef
+> print(string.strip(s, "ab"))
+cdef
 ```

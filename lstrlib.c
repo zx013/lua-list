@@ -1803,6 +1803,100 @@ static int str_split (lua_State *L) {
     return 1;
 }
 
+
+char *lstrip(char *s, unsigned char *m)
+{
+    while (m[*s]) s++;
+    return s;
+}
+
+
+char *rstrip(char *s, unsigned char *m)
+{
+    char *t = s;
+    while (*t) t++;
+    t--;
+    while (m[*t]) t--;
+    *(t + 1) = 0;
+    return s;
+}
+
+
+static int str_lstrip (lua_State *L) {
+    char *s;
+    const char *c = " \f\t\v";
+    unsigned char m[256] = { 0 };
+
+    switch (lua_gettop(L))
+    {
+    case 2:
+        c = luaL_checkstring(L, 2);
+    case 1:
+        s = (char *)luaL_checkstring(L, 1);
+        while (*c)
+            m[*c++] = 1;
+        s = lstrip(s, m);
+        lua_pushstring(L, s);
+        break;
+    default:
+        return luaL_error(L, "wrong number of arguments to 'strip'");
+    }
+    return 1;
+}
+
+
+static int str_rstrip (lua_State *L) {
+    char *s;
+    const char *c = " \f\t\v";
+    unsigned char m[256] = { 0 };
+
+    switch (lua_gettop(L))
+    {
+    case 2:
+        c = luaL_checkstring(L, 2);
+    case 1:
+        s = (char *)luaL_checkstring(L, 1);
+        while (*c)
+            m[*c++] = 1;
+        s = rstrip(s, m);
+        lua_pushstring(L, s);
+        break;
+    default:
+        return luaL_error(L, "wrong number of arguments to 'strip'");
+    }
+    return 1;
+}
+
+
+/*
+function string.strip(str)
+    local str, n = string.gsub(str, "^[%s\n\r\t]*(.-)[%s\n\r\t]*$", "%1")
+    return str
+end
+*/
+static int str_strip (lua_State *L) {
+    char *s;
+    const char *c = " \f\t\v";
+    unsigned char m[256] = { 0 };
+
+    switch (lua_gettop(L))
+    {
+    case 2:
+        c = luaL_checkstring(L, 2);
+    case 1:
+        s = (char *)luaL_checkstring(L, 1);
+        while (*c)
+            m[*c++] = 1;
+        s = lstrip(s, m);
+        s = rstrip(s, m);
+        lua_pushstring(L, s);
+        break;
+    default:
+        return luaL_error(L, "wrong number of arguments to 'strip'");
+    }
+    return 1;
+}
+
 /* }====================================================== */
 
 
@@ -1825,6 +1919,9 @@ static const luaL_Reg strlib[] = {
   {"packsize", str_packsize},
   {"unpack", str_unpack},
   {"split", str_split},
+  {"lstrip", str_lstrip},
+  {"rstrip", str_rstrip},
+  {"strip", str_strip},
   {NULL, NULL}
 };
 
