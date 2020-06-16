@@ -696,10 +696,10 @@ void luaV_concat (lua_State *L, int total) {
 void luaV_objlen (lua_State *L, StkId ra, const TValue *rb) {
   const TValue *tm;
   switch (ttypetag(rb)) {
-        case LUA_VLIST: {
-        List *l = lvalue(rb);
-        setivalue(s2v(ra), l->size);
-        return;
+    case LUA_VLIST: {
+      List *l = lvalue(rb);
+      setivalue(s2v(ra), l->size);
+      return;
     }
     case LUA_VTABLE: {
       Table *h = hvalue(rb);
@@ -1362,8 +1362,8 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
           L->top = ra + 1;  /* correct top in case of emergency GC */
           l = luaL_new(L);
           setlvalue2s(L, ra, l);
-          if (c != 0)
-              luaL_resize(L, l, c);  /* idem */
+          //if (c != 0)
+          //    luaL_resize(L, l, c);  /* idem */
           checkGC(L, ra + 1);
         vmbreak;
       }
