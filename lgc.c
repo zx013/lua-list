@@ -384,12 +384,14 @@ static lu_mem traverselist (global_State *g, List *l) {
     lua_Integer i;
     lua_Integer asize = l->size;
 
-    //for (i = 0, ln = l->head; i < asize; i++, ln = ln->next)
-    //    markvalue(g, &ln->val);
-    //if (g->gckind == KGC_GEN) {
-    //    linkgclist(l, g->grayagain);
-    //    black2gray(l);
-    //}
+    for (i = 0, ln = l->head; i < asize; i++, ln = ln->next)
+        markvalue(g, &ln->val);
+
+    if (g->gckind == KGC_GEN) {
+        linkgclist(l, g->grayagain);
+        black2gray(l);
+    }
+    
     return 1 + asize;
 }
 
@@ -1072,7 +1074,7 @@ static GCObject **correctgraylist (GCObject **p) {
   GCObject *curr;
   while ((curr = *p) != NULL) {
     switch (curr->tt) {
-      case LUA_VTABLE: case LUA_VUSERDATA: {
+      case LUA_VLIST: case LUA_VTABLE: case LUA_VUSERDATA: {
         GCObject **next = getgclist(curr);
         if (getage(curr) == G_TOUCHED1) {  /* touched in this cycle? */
           lua_assert(isgray(curr));
